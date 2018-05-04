@@ -50,7 +50,9 @@ int value = 0;
 
 
 long buttonPushRetriggerTime = 5000; // only every seconds
-long bellDuration = 500;
+long bellDuration          =   250; // in ms
+const long bellDurationMin =   100; // 0.1 s
+const long bellDurationMax =  1000; // 1.0 s
 
 #ifdef ISBUTTON
 long lastButtonPush = 0;
@@ -106,7 +108,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println();
 
-  int ipayload = atoi((char*)payload);
+  long ipayload = atoi((char*)payload);
   Serial.print("ipayload ");
   Serial.println(ipayload);
 
@@ -133,7 +135,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
   } // ring
   if ( strstr(topic,"duration") != pnull ) {
-    bellDuration = max(100,min(ipayload,10000));  // 0.1 min 10 second max
+    bellDuration = max(bellDurationMin,min(ipayload,bellDurationMax));
     Serial.print("change duration to ");
     Serial.print(bellDuration);
     Serial.println("ms");
