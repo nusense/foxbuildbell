@@ -38,7 +38,7 @@ const char* mqtt_server = ""; // mqtt
 const char* username = "";
 const char* mqttpass = "";
 */
-#include <secrets.h>
+#include "secrets.h"
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -48,9 +48,12 @@ long heartbeatTime = 10000; // 10 sec between heartbeats (for now)
 char msg[50];
 int value = 0;
 
+
+long buttonPushRetriggerTime = 5000; // only every seconds
+long bellDuration = 500;
+
 #ifdef ISBUTTON
 long lastButtonPush = 0;
-long buttonPushRetriggerTime = 5000; // only every seconds
 const char* clientid = "FoxBuildButton";
 #else
 const char* clientid = "FoxBuildBell";
@@ -94,24 +97,49 @@ void setup_wifi() {
 
 void callback(char* topic, byte* payload, unsigned int length) {
 
+  payload[length] = '\0'; // force 0 string ending (is this legal)
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length+1; i++) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
 
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    digitalWrite(5, HIGH);// Turn the bell relay
-    delay(50);            // this is the "duration" of the bell
-    digitalWrite(5, LOW);
-  } else {
-   //DigitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
-  Serial.print("message was not 1");
-  }
+  int ipayload = atoi((char*)payload);
+  Serial.print("ipayload ");
+  Serial.println(ipayload);
 
+  char* pnull = 0; 
+#ifdef ISBUTTON
+  if ( strstr(topic,"retrigger") != pnull ) {
+    buttonPushRetriggerTime = ipayload;
+    Serial.print("change retrigger to ");
+    Serial.print(buttonPushRetriggerTime);
+    Serial.println("ms");
+  }
+#else
+  if ( strstr(topic,"ring") != pnull ) {
+    Serial.println("ring?");
+    // Switch on the LED if an 1 was received as first character
+    if ( ipayload == 1 ) {
+      Serial.println("RING");
+      digitalWrite(5, HIGH);// Turn the bell relay
+      delay(bellDuration);            // this is the "duration" of the bell
+      digitalWrite(5, LOW);
+    } else {
+      //DigitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+      Serial.println("message was not 1");
+    }
+  } // ring
+  if ( strstr(topic,"duration") != pnull ) {
+    bellDuration = max(100,min(ipayload,10000));  // 0.1 min 10 second max
+    Serial.print("change duration to ");
+    Serial.print(bellDuration);
+    Serial.println("ms");
+  }
+#endif
+    
 }
 
 void reconnect() {
@@ -124,10 +152,11 @@ void reconnect() {
       // Once connected, publish an announcement...
 #ifdef ISBUTTON
       client.publish("/fox/build", "The button is now online");
+      client.subscribe("/fox/build/button/#");
 #else
       client.publish("/fox/build", "The bell is now online");
       // ... and (re)subscribe
-      client.subscribe("/fox/build/bell");
+      client.subscribe("/fox/build/bell/#");
 #endif
     } else {
       Serial.print("failed, rc=");
@@ -170,7 +199,7 @@ void loop() {
         lastButtonPush = now;
         Serial.print("mqtt send button pushed: ");
         Serial.println(msg);
-        client.publish("/fox/build/bell", msg);
+        client.publish("/fox/build/bell/ring", msg);
       }
     }
 #endif
