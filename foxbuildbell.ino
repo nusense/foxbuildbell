@@ -24,36 +24,28 @@
 */
 
 /* define this for the button, undef for the bell */
-//#define ISBUTTON
+// by default we're programming a "button" device, not the bell
+#define ISBUTTON
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
 // Update these with values suitable for your network.
 
+// this file is my version of the 5 lines below
+#include "secrets.h"
 /*
+// NOTE:  everyone else remove the secrets.h line above
+//        and uncomment this block (remove the * and * lines)
 const char* ssid = "";        // wifi
 const char* password = "";
 const char* mqtt_server = ""; // mqtt
 const char* username = "";
 const char* mqttpass = "";
 */
-#include "secrets.h"
 
-WiFiClient espClient;
-PubSubClient client(espClient);
-
-long lastHeartbeat = 0;
-long heartbeatTime = 10000; // 10 sec between heartbeats (for now)
-char msg[50];
-int value = 0;
-
-
-long buttonPushRetriggerTime = 5000; // only every seconds
-long bellDuration          =   250; // in ms
-const long bellDurationMin =   100; // 0.1 s
-const long bellDurationMax =  1000; // 1.0 s
-
+// NOTE:  make these clientid's _unique_
+//        or you'll interfere with the real button/bell
 #ifdef ISBUTTON
 long lastButtonPush = 0;
 const char* clientid = "FoxBuildButton";
@@ -61,17 +53,36 @@ const char* clientid = "FoxBuildButton";
 const char* clientid = "FoxBuildBell";
 #endif
 
+#ifdef ISBUTTON
+  // NOTE: wire from Wemos D1 device pin D4 to switch to ground
+  // on this device (Wemos D1) GPIO 2 is D4
+  // https://www.wemos.cc/sites/default/files/2016-09/mini_new_V2.pdf
+  #define BUTTON_PIN D4
+#endif
+
+
+WiFiClient   espClient;
+PubSubClient client(espClient);
+
+long lastHeartbeat = 0;
+long heartbeatTime = 10000; // 10 sec between heartbeats (for now)
+char msg[50];
+int value = 0;
+
+long buttonPushRetriggerTime = 5000; // only every seconds
+long bellDuration          =   250; // in ms
+const long bellDurationMin =   100; // 0.1 s
+const long bellDurationMax =  1000; // 1.0 s
+
 void setup() {
   pinMode(5, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
-  Serial.begin(115200);
+  Serial.begin(115200);   // NOTE:  If using the Arduino Serial monitor
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 
 #ifdef ISBUTTON
-  pinMode(2, INPUT_PULLUP); // This is the GPIO for the button. Not sure if the INPUT_PULLUP is necessary or effective.
-                            // There is an input pullup but I am not sure if it can be defined by hardware like on an UNO.
-                            // This is GPIO 2 which is D4 on the Wemos. https://www.wemos.cc/sites/default/files/2016-09/mini_new_V2.pdf
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 #endif
 
 }
@@ -112,7 +123,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("ipayload ");
   Serial.println(ipayload);
 
-  char* pnull = 0; 
+  char* pnull = 0;
 #ifdef ISBUTTON
   if ( strstr(topic,"retrigger") != pnull ) {
     buttonPushRetriggerTime = ipayload;
@@ -126,11 +137,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
     // Switch on the LED if an 1 was received as first character
     if ( ipayload == 1 ) {
       Serial.println("RING");
-      digitalWrite(5, HIGH);// Turn the bell relay
-      delay(bellDuration);            // this is the "duration" of the bell
+      digitalWrite(5, HIGH);   // Turn the bell relay
+      delay(bellDuration);     // this is the "duration" of the bell
       digitalWrite(5, LOW);
     } else {
-      //DigitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+      // Turn the LED off by making the voltage HIGH
+      //DigitalWrite(BUILTIN_LED, HIGH);
       Serial.println("message was not 1");
     }
   } // ring
@@ -141,7 +153,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("ms");
   }
 #endif
-    
+
 }
 
 void reconnect() {
@@ -192,7 +204,7 @@ void loop() {
   }
 
 #ifdef ISBUTTON
-  int sensorVal = digitalRead(2);
+  int sensorVal = digitalRead(BUTTON_PIN);
   if ( ! sensorVal ) {
       snprintf(msg, 75, "%d", !sensorVal);
       //Serial.print("button pushed: ");
