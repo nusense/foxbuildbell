@@ -36,7 +36,7 @@
 #include "secrets.h"
 /*
 // NOTE:  everyone else remove the secrets.h line above
-//        and uncomment this block (remove the * and * lines)
+//        and uncomment this block (remove the lines w/ "*" above/below)
 const char* ssid = "";        // wifi
 const char* password = "";
 const char* mqtt_server = ""; // mqtt
@@ -54,12 +54,12 @@ const char* clientid = "FoxBuildBell";
 #endif
 
 #ifdef ISBUTTON
-  // NOTE: wire from Wemos D1 device pin D4 to switch to ground
-  // on this device (Wemos D1) GPIO 2 is D4
+  // NOTE: wire from Wemos D1 device pin D3 to switch to ground
+  // on this device (Wemos D1) GPIO 0 is D3
   // https://www.wemos.cc/sites/default/files/2016-09/mini_new_V2.pdf
-  #define BUTTON_PIN D4
+  #define BUTTON_PIN D3
 #endif
-
+#define LED_PIN D4
 
 WiFiClient   espClient;
 PubSubClient client(espClient);
@@ -75,7 +75,8 @@ const long bellDurationMin =   100; // 0.1 s
 const long bellDurationMax =  1000; // 1.0 s
 
 void setup() {
-  pinMode(5, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(LED_PIN, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  
   Serial.begin(115200);   // NOTE:  If using the Arduino Serial monitor
   setup_wifi();
   client.setServer(mqtt_server, 1883);
@@ -164,14 +165,19 @@ void reconnect() {
     if ( client.connect(clientid,username,mqttpass) ) {
       Serial.println("connected");
       // Once connected, publish an announcement...
+      int r = 0;
 #ifdef ISBUTTON
       client.publish("/fox/build", "The button is now online");
-      client.subscribe("/fox/build/button/#");
+      r = client.subscribe("/fox/build/button/#");
+      Serial.print("client.subscribe /fox/build/button/# status=");
 #else
       client.publish("/fox/build", "The bell is now online");
       // ... and (re)subscribe
-      client.subscribe("/fox/build/bell/#");
+      r = client.subscribe("/fox/build/bell/#");
+      Serial.print("client.subscribe /fox/build/bell/# status=");
 #endif
+      Serial.print(r);
+      Serial.println("...");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -205,10 +211,20 @@ void loop() {
 
 #ifdef ISBUTTON
   int sensorVal = digitalRead(BUTTON_PIN);
-  if ( ! sensorVal ) {
+  /*
+  static int icount = 0;
+  ++icount;
+  if (icount%10000 == 0) {
+    Serial.print("icount ");
+    Serial.print(icount);
+    Serial.print(" sensorVal=");
+    Serial.println(sensorVal);
+  }
+  */
+  if ( ! sensorVal ) {  // is the button pushed (i.e. connected to ground)
       snprintf(msg, 75, "%d", !sensorVal);
-      //Serial.print("button pushed: ");
-      //Serial.println(msg);
+      Serial.print("button pushed: ");
+      Serial.println(msg);
       if (now - lastButtonPush > buttonPushRetriggerTime ) {
         lastButtonPush = now;
         Serial.print("mqtt send button pushed: ");
