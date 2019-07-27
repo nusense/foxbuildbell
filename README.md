@@ -6,7 +6,7 @@ This is the code for programming the esp8266s used in the button & bell at Fox.B
 
 Both the "button" and the "bell" send regular (10s intervals) heartbeat messages to the MQTT server on the `/fox/build/heartbeat` topic (payload is the nth heartbeat sent since boot).
 
-If the "button" is pushed then a MQTT message is sent out to the topic `/fox/build/bell`; code prevents mashing down and holding the button continuously but only allowing a retrigger every 5s (default).
+If the "button" is pushed then a MQTT message is sent out to the topic `/fox/build/bell`; code prevents mashing down and holding the button continuously by only allowing a retrigger every 5s (default).
 
 If the "bell" receives a `1` on the `/fox/build/bell` topic, then it pulls pin 5 HIGH for 250ms (default).
 
