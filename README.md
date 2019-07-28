@@ -17,18 +17,18 @@ The "bell" relay is wired to pin 5 of it's respective esp8266 (goes HIGH on rece
 
 ## How to Flash
 
-If you are programming the bell leave `//#define ISBUTTON` commented out
+If you are programming the bell leave `//#define ISBUTTON` commented out\
 If you are programming the button uncomment `#define ISBUTTON`
 
 ## MQTT messages system responds to:
 
-`/fox/build/bell/ring         1`   === ring bell
-`/fox/build/bell/duration    <ms>` === set duration in ms
+`/fox/build/bell/ring         1`   ### ring bell\
+`/fox/build/bell/duration    <ms>` ### set duration in ms\
 `/fox/build/button/retrigger <ms>` === time before next retrigger
 
 ## MQTT message system generates:
 
-`/fox/build   "The bell is now online"`
-`/fox/build   "The button is now online"`
-`/fox/build/heartbeat  "button #<N>"`   === <N> is the n-th heartbeat since it came online
+`/fox/build   "The bell is now online"`\
+`/fox/build   "The button is now online"`\
+`/fox/build/heartbeat  "button #<N>"`   === <N> is the n-th heartbeat since it came online\
 `/fox/build/heartbeat  "bell #<N>"`     === same for the bell
