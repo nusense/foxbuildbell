@@ -24,11 +24,11 @@ If you are programming the button uncomment `#define ISBUTTON`
 
 `/fox/build/bell/ring         1`   ### ring bell\
 `/fox/build/bell/duration    <ms>` ### set duration in ms\
-`/fox/build/button/retrigger <ms>` === time before next retrigger
+`/fox/build/button/retrigger <ms>` ### time before next retrigger
 
 ## MQTT message system generates:
 
-`/fox/build   "The bell is now online"`\
 `/fox/build   "The button is now online"`\
-`/fox/build/heartbeat  "button #<N>"`   === <N> is the n-th heartbeat since it came online\
-`/fox/build/heartbeat  "bell #<N>"`     === same for the bell
+`/fox/build   "The bell is now online"`\
+`/fox/build/heartbeat  "button #<N>"`   ### <N> is the n-th heartbeat since the button came online\
+`/fox/build/heartbeat  "bell #<N>"`     ### same for the bell
