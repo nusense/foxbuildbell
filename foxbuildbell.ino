@@ -25,7 +25,7 @@
 
 /* define this for the button, undef for the bell */
 // by default we're programming a "button" device, not the bell
-#define ISBUTTON
+//#define ISBUTTON
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -70,7 +70,7 @@ char msg[50];
 int value = 0;
 
 long buttonPushRetriggerTime = 5000; // only every seconds
-long bellDuration          =   250; // in ms
+long bellDuration          =   200; // in ms
 const long bellDurationMin =   100; // 0.1 s
 const long bellDurationMax =  1000; // 1.0 s
 
@@ -84,6 +84,9 @@ void setup() {
 
 #ifdef ISBUTTON
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+#else
+  pinMode(D1,OUTPUT);
+  digitalWrite(D1, LOW);
 #endif
 
 }
@@ -138,9 +141,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     // Switch on the LED if an 1 was received as first character
     if ( ipayload == 1 ) {
       Serial.println("RING");
-      digitalWrite(5, HIGH);   // Turn the bell relay
+      digitalWrite(D1, HIGH);   // Turn the bell relay
       delay(bellDuration);     // this is the "duration" of the bell
-      digitalWrite(5, LOW);
+      digitalWrite(D1, LOW);
     } else {
       // Turn the LED off by making the voltage HIGH
       //DigitalWrite(BUILTIN_LED, HIGH);
