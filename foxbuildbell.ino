@@ -48,10 +48,12 @@ const char* mqttpass = "";
 //        or you'll interfere with the real button/bell
 #ifdef ISBUTTON
 long lastButtonPush = 0;
-const char* clientid = "FoxBuildButton";
+const char* clientidbase = "FoxBuildButton-";
 #else
-const char* clientid = "FoxBuildBell";
+const char* clientidbase = "FoxBuildBell-";
 #endif
+String clientid;
+String MACID;
 
 #ifdef ISBUTTON
   // NOTE: wire from Wemos D1 device pin D3 to switch to ground
@@ -81,6 +83,12 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+
+  // make the MQTT client id unique using device MAC address
+  // this allows for more than one bell or button
+  MACID = WiFi.macAddress();
+  Serial.print("MAC: ");
+  clientid = String(clientidbase) + MACID;
 
 #ifdef ISBUTTON
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -164,8 +172,10 @@ void reconnect() {
   // Loop until we're reconnected
   while ( ! client.connected() ) {
     Serial.print("Attempting MQTT connection...");
+    Serial.print(clientid.c_str());
+    Serial.print("...");
     // Attempt to connect
-    if ( client.connect(clientid,username,mqttpass) ) {
+    if ( client.connect(clientid.c_str(),username,mqttpass) ) {
       Serial.println("connected");
       // Once connected, publish an announcement...
       int r = 0;
@@ -203,9 +213,9 @@ void loop() {
     lastHeartbeat = now;
     ++value;
 #ifdef ISBUTTON
-    snprintf (msg, 75, "button #%ld", value);
+    snprintf (msg, 75, "button %s #%ld", MACID.c_str(), value);
 #else
-    snprintf (msg, 75, "bell #%ld", value);
+    snprintf (msg, 75, "bell %s #%ld", MACID.c_str(), value);
 #endif
     Serial.print("Publish /fox/build/heartbeat: ");
     Serial.println(msg);
