@@ -15,7 +15,7 @@
  reconnect function. See the 'mqtt_reconnect_nonblocking' example for how to
  achieve the same result without blocking the main loop.
 
- To install the ESP8266 board, (using Arduino 1.6.4+):
+ To install the ESP8266 board, (using Arduino 1.6.4+)
   - Add the following 3rd party board manager under "File -> Preferences -> Additional Boards Manager URLs":
        http://arduino.esp8266.com/stable/package_esp8266com_index.json
   - Open the "Tools -> Board -> Board Manager" and click install for the ESP8266"
@@ -24,8 +24,7 @@
 */
 
 /* define this for the button, undef for the bell */
-// by default we're programming a "button" device, not the bell
-//#define ISBUTTON
+#define ISBUTTON
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -34,14 +33,16 @@
 
 // this file is my version of the 5 lines below
 #include "secrets.h"
+
 /*
 // NOTE:  everyone else remove the secrets.h line above
 //        and uncomment this block (remove the lines w/ "*" above/below)
-const char* ssid = "";        // wifi
-const char* password = "";
-const char* mqtt_server = ""; // mqtt
-const char* username = "";
-const char* mqttpass = "";
+const char* ssid       = "<ssid>";            // wifi
+const char* password   = "<wifipassword>";
+const char* mqttserver = "<mqtt.server.com>"; // mqtt
+const char* username   = "<mqttuser>";
+const char* mqttpass   = "<mqttpassword>";
+const int   mqttport   = 1883;
 */
 
 // NOTE:  make these clientid's _unique_
@@ -60,6 +61,9 @@ String MACID;
   // on this device (Wemos D1) GPIO 0 is D3
   // https://www.wemos.cc/sites/default/files/2016-09/mini_new_V2.pdf
   #define BUTTON_PIN D3
+#else
+  // NOTE: wire from Wemos D1 device pin D1 to relay input
+  #define BELL_PIN D1
 #endif
 #define LED_PIN D4
 
@@ -71,17 +75,23 @@ long heartbeatTime = 10000; // 10 sec between heartbeats (for now)
 char msg[50];
 int value = 0;
 
-long buttonPushRetriggerTime = 5000; // only every seconds
-long bellDuration          =   200; // in ms
-const long bellDurationMin =   100; // 0.1 s
-const long bellDurationMax =  1000; // 1.0 s
+long buttonPushRetriggerTime = 4000; // only every 4 seconds
+long bellDuration          =   400;  // in ms
+const long bellDurationMin =   100;  // 0.1 s
+const long bellDurationMax =  1000;  // 1.0 s
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
-  
-  Serial.begin(115200);   // NOTE:  If using the Arduino Serial monitor
+  pinMode(LED_PIN, OUTPUT); // Initialize the BUILTIN_LED pin as an output
+#ifdef ISBUTTON
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+#else
+  pinMode(BELL_PIN,OUTPUT);
+  digitalWrite(BELL_PIN, LOW);
+#endif
+
+  Serial.begin(115200);     // NOTE:  If using the Arduino Serial monitor
   setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  client.setServer(mqttserver, mqttport);
   client.setCallback(callback);
 
   // make the MQTT client id unique using device MAC address
@@ -89,13 +99,6 @@ void setup() {
   MACID = WiFi.macAddress();
   Serial.print("MAC: ");
   clientid = String(clientidbase) + MACID;
-
-#ifdef ISBUTTON
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-#else
-  pinMode(D1,OUTPUT);
-  digitalWrite(D1, LOW);
-#endif
 
 }
 
@@ -149,9 +152,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     // Switch on the LED if an 1 was received as first character
     if ( ipayload == 1 ) {
       Serial.println("RING");
-      digitalWrite(D1, HIGH);   // Turn the bell relay
+      digitalWrite(BELL_PIN, HIGH);   // Turn the bell relay
       delay(bellDuration);     // this is the "duration" of the bell
-      digitalWrite(D1, LOW);
+      digitalWrite(BELL_PIN, LOW);
     } else {
       // Turn the LED off by making the voltage HIGH
       //DigitalWrite(BUILTIN_LED, HIGH);
@@ -180,14 +183,14 @@ void reconnect() {
       // Once connected, publish an announcement...
       int r = 0;
 #ifdef ISBUTTON
-      client.publish("/fox/build", "The button is now online");
-      r = client.subscribe("/fox/build/button/#");
-      Serial.print("client.subscribe /fox/build/button/# status=");
+      client.publish("foxbuild", "The button is now online");
+      r = client.subscribe("foxbuild/button/#");
+      Serial.print("client.subscribe foxbuild/button/# status=");
 #else
-      client.publish("/fox/build", "The bell is now online");
+      client.publish("foxbuild", "The bell is now online");
       // ... and (re)subscribe
-      r = client.subscribe("/fox/build/bell/#");
-      Serial.print("client.subscribe /fox/build/bell/# status=");
+      r = client.subscribe("foxbuild/bell/#");
+      Serial.print("client.subscribe foxbuild/bell/# status=");
 #endif
       Serial.print(r);
       Serial.println("...");
@@ -217,9 +220,9 @@ void loop() {
 #else
     snprintf (msg, 75, "bell %s #%ld", MACID.c_str(), value);
 #endif
-    Serial.print("Publish /fox/build/heartbeat: ");
+    Serial.print("Publish foxbuild/heartbeat: ");
     Serial.println(msg);
-    client.publish("/fox/build/heartbeat", msg);
+    client.publish("foxbuild/heartbeat", msg);
   }
 
 #ifdef ISBUTTON
@@ -242,7 +245,7 @@ void loop() {
         lastButtonPush = now;
         Serial.print("mqtt send button pushed: ");
         Serial.println(msg);
-        client.publish("/fox/build/bell/ring", msg);
+        client.publish("foxbuild/bell/ring", msg);
       }
     }
 #endif
